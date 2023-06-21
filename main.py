@@ -67,7 +67,7 @@ def predict(prompt: str = "\n", max_new_tokens: int = 10, num_samples:int = 1):
     # Run model inference
     y = generate_from_prompt(app.package["model"], app.package["ctx"],
                             start=prompt, max_new_tokens=max_new_tokens,
-                            num_samples=num_samples, device=CONFIG['device'])
+                            num_samples=num_samples, device=CONFIG['DEVICE'])
     # Prepare json for returning
     app.package.update({
         "prompt": prompt,
