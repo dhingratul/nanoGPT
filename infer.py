@@ -5,28 +5,21 @@ Usage: $ python sample.py \
     --start="What is the answer to life, the universe, and everything?" \
     --num_samples=5 --max_new_tokens=100
 """
-# import os
-# import pickle
+
 from contextlib import nullcontext
 import torch
 import tiktoken
-from model import GPTConfig, GPT
-# from sample import max_new_tokens
+from model import GPT
 
 
 def get_model(init_from='gpt2-xl', device='cpu'):
     # -----------------------------------------------------------------------------
-    num_samples = 1 # number of samples to draw
-    max_new_tokens = 10 # number of tokens generated in each sample
-    temperature = 0.8 # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
-    top_k = 200 # retain only the top_k most likely tokens, clamp others to have 0 probability
     seed = 1337
     if device == "cuda":
         dtype = 'bfloat16' if torch.cuda.is_bf16_supported() else 'float16' # 'float32' or 'bfloat16' or 'float16'
     else:
         dtype = 'float32' # 'float32' or 'bfloat16' or 'float16'
-    compile = True # use PyTorch 2.0 to compile the model to be faster
-    # exec(open('configurator.py').read()) # overrides from command line or config file
+    compile = True
     # -----------------------------------------------------------------------------
 
     torch.manual_seed(seed)
@@ -38,6 +31,7 @@ def get_model(init_from='gpt2-xl', device='cpu'):
     ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=device_type, dtype=ptdtype)
 
     # model
+    print(f"Initializing pre-trained model from {init_from}")
     model = GPT.from_pretrained(init_from, dict(dropout=0.0))
 
     model.eval()
@@ -50,19 +44,16 @@ def get_model(init_from='gpt2-xl', device='cpu'):
 
 def generate_from_prompt(model, ctx, start="\n", max_new_tokens=10, num_samples=1, device='cpu'):
     # -----------------------------------------------------------------------------
-    num_samples = num_samples  # number of samples to draw
-    max_new_tokens = max_new_tokens # number of tokens generated in each sample
     temperature = 0.8 # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
     top_k = 200 # retain only the top_k most likely tokens, clamp others to have 0 probability
     # -----------------------------------------------------------------------------
-    # ok let's assume gpt-2 encodings by default
-    print("Usin GPT-2 encodings...")
     enc = tiktoken.get_encoding("gpt2")
     encode = lambda s: enc.encode(s, allowed_special={"<|endoftext|>"})
     decode = lambda l: enc.decode(l)
     start_ids = encode(start)
     x = (torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...])
     res = []
+
     # run generation
     with torch.no_grad():
         with ctx:
