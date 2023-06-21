@@ -6,10 +6,15 @@ Usage: $ python sample.py \
     --num_samples=5 --max_new_tokens=100
 """
 
+import os, sys
 from contextlib import nullcontext
 import torch
 import tiktoken
+
 from model import GPT
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 
 def get_model(init_from='gpt2-xl', device='cpu'):

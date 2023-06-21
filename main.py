@@ -6,11 +6,11 @@ Sample Usage: http://127.0.0.1:8000/predict?prompt=What%20is%20the%20meaning%20o
 """
 
 from infer import generate_from_prompt, get_model
-
 import uvicorn
 # Using FastAPI over Flask as it generates documentation automatically
-from fastapi import FastAPI, Body, Response
+from fastapi import FastAPI, Response
 from fastapi.logger import logger
+from config import CONFIG, update_config
 
 
 # Initialize API Server
@@ -23,6 +23,7 @@ app = FastAPI(
     license_info=None
 )
 
+CONFIG = CONFIG.copy()
 
 @app.get("/live")
 def is_live():
@@ -37,7 +38,9 @@ def is_ready():
 
 @app.on_event("startup")
 def startup_event():
-    model, ctx = get_model(init_from="gpt2-medium", device='cpu')
+    logger.info('PyTorch using device: {}'.format(CONFIG['DEVICE']))
+    logger.info('Using: {} config'.format(CONFIG['INIT_FROM']))
+    model, ctx = get_model(init_from=CONFIG['INIT_FROM'], device=CONFIG['DEVICE'])
     app.package = {
         "model": model,
         "ctx": ctx
@@ -45,8 +48,10 @@ def startup_event():
 
 @app.post("/model")
 def instantiate_new_model(init_from:str="gpt2-medium", device='cpu'):
+    CONFIG = update_config(CONFIG, 'INIT_FROM', init_from)
+    CONFIG = update_config(CONFIG, 'DEVICE', device)
     assert init_from in {'gpt2', 'gpt2-medium', 'gpt2-large', 'gpt2-xl'}
-    model, ctx = get_model(init_from, device)
+    model, ctx = get_model(CONFIG['INIT_FROM'], CONFIG['DEVICE'])
     app.package["model"] = model
     app.package["ctx"] = ctx
 
@@ -61,7 +66,8 @@ def predict(prompt: str = "\n", max_new_tokens: int = 10, num_samples:int = 1):
 
     # Run model inference
     y = generate_from_prompt(app.package["model"], app.package["ctx"],
-                             start=prompt, max_new_tokens=max_new_tokens, num_samples=num_samples)
+                            start=prompt, max_new_tokens=max_new_tokens,
+                            num_samples=num_samples, device=CONFIG['device'])
     # Prepare json for returning
     app.package.update({
         "prompt": prompt,
@@ -72,12 +78,7 @@ def predict(prompt: str = "\n", max_new_tokens: int = 10, num_samples:int = 1):
 )
     logger.info(f'Response: {y}')
     # TODO: Add streaming inferences
-    return {
-        "prompt": prompt,
-        "max_new_tokens": max_new_tokens,
-        "num_samples": num_samples,
-        "response_gpt": y
-    }
+    return y
 
 @app.on_event("shutdown")
 async def shutdown_event():

@@ -12,7 +12,8 @@ Because the code is so simple, it is very easy to hack to your needs, train new 
 ## install
 
 ```
-pip install torch numpy transformers datasets tiktoken wandb tqdm fastapi uvicorn
+pip install torch numpy transformers datasets tiktoken wandb tqdm fastapi uvicorn fastapi_utils
+
 ```
 
 Dependencies:
